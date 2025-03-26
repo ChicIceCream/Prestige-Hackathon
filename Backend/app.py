@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template
 from sentence_transformers import SentenceTransformer
 from scipy.spatial.distance import cosine
 
@@ -17,47 +17,7 @@ def get_similarity(text1, text2):
 @app.route("/")
 def home():
     """Serve the HTML page for the similarity checker."""
-    return render_template_string('''
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Text Similarity Checker</title>
-        </head>
-        <body>
-            <h2>Enter two texts to check similarity</h2>
-            <form id="similarity-form">
-                <label for="text1">Text 1:</label><br>
-                <input type="text" id="text1" name="text1"><br><br>
-
-                <label for="text2">Text 2:</label><br>
-                <input type="text" id="text2" name="text2"><br><br>
-
-                <button type="button" onclick="checkSimilarity()">Check Similarity</button>
-            </form>
-            <p id="result"></p>
-
-            <script>
-                function checkSimilarity() {
-                    let text1 = document.getElementById("text1").value;
-                    let text2 = document.getElementById("text2").value;
-
-                    fetch('/similarity', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text1, text2 })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById("result").innerText = "Similarity Score: " + data.similarity_score;
-                    })
-                    .catch(error => console.error('Error:', error));
-                }
-            </script>
-        </body>
-        </html>
-    ''')
+    return render_template("index.html")
 
 @app.route("/similarity", methods=["POST"])
 def similarity_api():
