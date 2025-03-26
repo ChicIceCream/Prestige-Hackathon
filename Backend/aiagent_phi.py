@@ -170,10 +170,10 @@ fact_check_agent = Agent(
     markdown=True,
 )
 
-# Main execution
-if __name__ == "__main__":
-    # Replace with a valid news article URL for testing
-    test_url = "Osama Bin Laden fell in love with Queen Elizabeth"
-    response = fact_check_agent.print_response(test_url, stream=True)
-    print("\n--- Final Response ---")
-    print(response)
+# # Main execution
+# if __name__ == "__main__":
+#     # Replace with a valid news article URL for testing
+#     test_url = "Osama Bin Laden fell in love with Queen Elizabeth"
+#     response = fact_check_agent.print_response(test_url, stream=True)
+#     print("\n--- Final Response ---")
+#     print(response)
