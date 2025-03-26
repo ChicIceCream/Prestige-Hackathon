@@ -165,15 +165,28 @@ fact_check_agent = Agent(
     name="FactCheck Agent",
     model=Groq(id="llama-3.1-8b-instant"),  # or your preferred model
     tools=[fact_check_toolkit],
-    instructions=["Use the FactCheckTool to verify article claims and return similarity results."],
+    instructions=[""""
+    "           Use the FactCheckTool to verify article claims and return similarity results.
+                You should not use any previous information that you have. You are a blank model.
+                Only when you look for sources and find information, that is what you will be 
+                relating to. Your opinion does not matter in this manner. Thanks!
+                This should be your format to return an answer:
+                Your thoughts: (This is where you talk about whether the sources actually relate to prompt news.)
+                ----------------------------------------------------------
+                Claims :(This is where you will tell your sources and how they affected
+                your output with the similarity results between them and the prompt. This place should also include all the links as well next to the sources.)
+                -----------------------------------------------------------
+                Final Probability of the news being Real:
+                Return final number based on similarity result. DO NOT show anything else in this section. Your output should only be a number with a percentage sign.
+                """],
     show_tool_calls=True,
     markdown=True,
 )
 
 # # Main execution
-# if __name__ == "__main__":
-#     # Replace with a valid news article URL for testing
-#     test_url = "Osama Bin Laden fell in love with Queen Elizabeth"
-#     response = fact_check_agent.print_response(test_url, stream=True)
-#     print("\n--- Final Response ---")
-#     print(response)
+if __name__ == "__main__":
+    # Replace with a valid news article URL for testing
+    test_url = "Osama Bin Laden fell in love with Queen Elizabeth"
+    response = fact_check_agent.print_response(test_url, stream=True)
+    print("\n--- Final Response ---")
+    print(response)
