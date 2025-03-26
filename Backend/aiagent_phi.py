@@ -159,11 +159,11 @@ class FactCheckToolkit(Toolkit):
         
         return json.dumps(output, indent=4)
 
-# Create the fact-check agent
+#* Creating the agent 
 fact_check_toolkit = FactCheckToolkit()
 fact_check_agent = Agent(
     name="FactCheck Agent",
-    model=Groq(id="llama-3.1-8b-instant"),  # or your preferred model
+    model=Groq(id="llama-3.1-8b-instant"),  #* the model i want to put
     tools=[fact_check_toolkit],
     instructions=[""""
     "           Use the FactCheckTool to verify article claims and return similarity results.
@@ -183,10 +183,10 @@ fact_check_agent = Agent(
     markdown=True,
 )
 
-# # Main execution
+
 if __name__ == "__main__":
     # Replace with a valid news article URL for testing
-    test_url = "Osama Bin Laden fell in love with Queen Elizabeth"
+    test_url = "Aliens were found in Dholakpur, India"
     response = fact_check_agent.print_response(test_url, stream=True)
     print("\n--- Final Response ---")
     print(response)

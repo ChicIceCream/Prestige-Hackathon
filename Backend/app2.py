@@ -1,52 +1,35 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 from aiagent_phi import fact_check_agent
-from io import StringIO
-import sys
+from gemini_ocr import perform_ocr_and_summarize
+import tempfile
 
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def index():
-    # Render the HTML form to enter the URL
-    return render_template("form.html")
-
 @app.route("/fact_check", methods=["POST"])
 def fact_check():
-    data = request.get_json()
-    
-    # Ensure valid JSON data
-    if not data:
-        return jsonify({"error": "Invalid JSON data"}), 400
-    
-    url = data.get("url")
-    
-    # Ensure the URL is provided
-    if not url:
-        return jsonify({"error": "No URL provided"}), 400
+    """Handles both text input and image-based OCR fact-checking."""
+    text = request.form.get("text", "")
+    image = request.files.get("image")  # Get image from Next.js request
+
+    if not text and not image:
+        return jsonify({"error": "No input provided"}), 400
 
     try:
-        # Create a StringIO object to capture stdout
-        output = StringIO()
-        sys.stdout = output
-        
-        # Run the fact check and capture the response
-        fact_check_agent.print_response(url, stream=True)
-        
-        # Get the captured output
-        response = output.getvalue()
-        
-        # Reset stdout to its original state
-        sys.stdout = sys.__stdout__
-        
-        # If no valid response is received, return an error
-        if not response:
-            return jsonify({"error": "Empty response from fact check agent"}), 500
-            
-        # Return the fact-check result as JSON
-        return jsonify({"result": response.strip()})
-        
+        # If an image is uploaded, perform OCR and summarization
+        if image:
+            with tempfile.NamedTemporaryFile(delete=True, suffix=".png") as temp_img:
+                image.save(temp_img.name)  # Save in-memory
+                text = perform_ocr_and_summarize(temp_img.name)  # Gemini OCR
+
+        if not text:
+            return jsonify({"error": "OCR failed to extract text"}), 500
+
+        # Send extracted/summarized text to AI agent for fact-checking
+        result = fact_check_agent.print_response(text, stream=False)
+
+        return jsonify({"result": result.strip()})
+
     except Exception as e:
-        # Handle any errors during the fact-checking process
         return jsonify({"error": f"Fact check failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
