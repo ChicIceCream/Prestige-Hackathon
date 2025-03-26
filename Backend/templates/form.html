@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fact Checker</title>
+    <script>
+    // Function to remove ANSI escape codes from the text
+    function removeAnsiCodes(str) {
+        return str.replace(/\x1b\[[0-9;]*m/g, '');
+    }
+
+    async function checkFact() {
+        const url = document.getElementById("url").value;
+
+        // Ensure the URL is not empty
+        if (!url) {
+            document.getElementById("result").innerText = "Please provide a valid URL.";
+            return;
+        }
+
+        // Clear previous result or error
+        document.getElementById("result").innerText = "Checking... Please wait.";
+
+        try {
+            // Make the POST request to the Flask server
+            const response = await fetch("/fact_check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: url })
+            });
+
+            // Check if response status is okay
+            if (!response.ok) {
+                throw new Error('Failed to fetch data from server');
+            }
+
+            // Parse the response
+            const data = await response.json();
+
+            if (data.error) {
+                // Handle errors from backend
+                document.getElementById("result").innerText = "Error: " + data.error;
+            } else if (data.result) {
+                // Clean the result by removing ANSI codes
+                const cleanedResult = removeAnsiCodes(data.result);
+                // Display the fact-check result as simple text
+                document.getElementById("result").innerText = cleanedResult;
+            } else {
+                document.getElementById("result").innerText = "No fact-check result found.";
+            }
+        } catch (error) {
+            // Handle any error from the fetch request
+            document.getElementById("result").innerText = "An error occurred: " + error.message;
+        }
+    }
+    </script>
+</head>
+<body>
+    <h1>Fact Check Tool</h1>
+    <input type="text" id="url" placeholder="Enter news article URL">
+    <button onclick="checkFact()">Check Fact</button>
+    <pre id="result"></pre>
+</body>
+</html>
