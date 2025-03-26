@@ -4,25 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text Similarity Checker</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        textarea { width: 100%; height: 100px; margin-bottom: 10px; }
-        button { padding: 10px 15px; cursor: pointer; }
-        #result { margin-top: 15px; font-weight: bold; }
-    </style>
 </head>
 <body>
-    <h2>Text Similarity Checker</h2>
-    <textarea id="text1" placeholder="Enter first text..."></textarea>
-    <textarea id="text2" placeholder="Enter second text..."></textarea>
-    <button onclick="checkSimilarity()">Check Similarity</button>
+    <h2>Enter two texts to check similarity</h2>
+    <form id="similarity-form">
+        <label for="text1">Text 1:</label><br>
+        <input type="text" id="text1" name="text1"><br><br>
+
+        <label for="text2">Text 2:</label><br>
+        <input type="text" id="text2" name="text2"><br><br>
+
+        <button type="button" onclick="checkSimilarity()">Check Similarity</button>
+    </form>
     <p id="result"></p>
 
     <script>
         function checkSimilarity() {
-            const text1 = document.getElementById('text1').value;
-            const text2 = document.getElementById('text2').value;
-            
+            let text1 = document.getElementById("text1").value;
+            let text2 = document.getElementById("text2").value;
+
             fetch('/similarity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -30,12 +30,9 @@
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('result').innerText = "Similarity Score: " + data.similarity_score;
+                document.getElementById("result").innerText = "Similarity Score: " + data.similarity_score;
             })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('result').innerText = "Error calculating similarity.";
-            });
+            .catch(error => console.error('Error:', error));
         }
     </script>
 </body>
