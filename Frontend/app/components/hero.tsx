@@ -34,15 +34,18 @@ export function parseApiResponse(raw: string) {
 
   // 2. Extract Claims as an array of strings
   const claims: { text: string; url: string }[] = [];
-  const claimMatches = [...cleaned.matchAll(/\d+\s*Claim\s*\d+\s*-\s*(.*?)\s*(https?:\/\/[^\s]+)/gs)];
+  const claimMatches = [
+    ...cleaned.matchAll(
+      /\d+\s*Claim\s*\d+\s*-\s*(.*?)\s*(https?:\/\/[^\s]+)/gs
+    ),
+  ];
 
   for (const match of claimMatches) {
-    let text = match[1].replace(/\x1B\]8;id=\d+;/g, '').trim(); // Remove the "id=..." part
-    let url = match[2].split('')[0].trim(); // Extract the clean URL before escape sequences
+    let text = match[1].replace(/\x1B\]8;id=\d+;/g, "").trim(); // Remove the "id=..." part
+    let url = match[2].split("")[0].trim(); // Extract the clean URL before escape sequences
 
     claims.push({ text, url });
   }
-
 
   for (const match of claimMatches) {
     claims.push({
@@ -155,25 +158,23 @@ const Hero: React.FC = () => {
     multiple: false, // Allow only one file at a time
   });
 
-  console.log("selected file", selectedFile);
-
   const handleFactCheck = async () => {
     const formData = new FormData();
-    if(selectedFile){
+    if (selectedFile) {
       formData.append("file", selectedFile); // `file` is the selected File object
 
       fetch("http://127.0.0.1:5000/fact_check", {
         method: "POST",
         body: formData,
       })
-        .then(response => response.json())
-        .then(data => console.log("Upload success:", data))
-        .catch(error => console.error("Upload failed:", error));
+        .then((response) => response.json())
+        .then((data) => console.log("Upload success:", data))
+        .catch((error) => console.error("Upload failed:", error));
 
-        setSelectedFile(null);
-        return;
+      setSelectedFile(null);
+      setUrl("");
+      return;
     }
-
 
     if (!url) {
       setError("Please enter a URL");
@@ -184,7 +185,7 @@ const Hero: React.FC = () => {
     setError(null);
     setResult(null);
 
-    formData.append("text", url); 
+    formData.append("text", url);
 
     try {
       const response = await fetch("http://127.0.0.1:5000/fact_check", {
@@ -204,16 +205,24 @@ const Hero: React.FC = () => {
       setError("Failed to fetch data. Please try again.");
     }
   };
-
   useEffect(() => {
-    if (expanded) {
+    if (expanded && resultRef.current) {
+      // Ensure `resultRef.current` is not null
       window.scrollTo({
         top: resultRef.current.offsetTop + resultRef.current.offsetHeight,
         behavior: "smooth",
       });
-      setTimeout(() => setLoading(true), 250);
+
+      setTimeout(() => {
+        if (resultRef.current) {
+          // Check again before modifying properties
+          setLoading(true);
+          resultRef.current.offsetTop = 0;
+          resultRef.current.offsetHeight = 0;
+        }
+      }, 250);
     }
-  }, [expanded]);
+  }, [result]);
 
   useEffect(() => {
     if (result) {
@@ -221,9 +230,6 @@ const Hero: React.FC = () => {
       setFinalData(parseApiResponse(result));
     }
   }, [result]);
-
-  console.log("final data", finalData);
-  // console.log('after cleaning', cleanedResult)
 
   return (
     <div
@@ -263,7 +269,7 @@ const Hero: React.FC = () => {
 
               <TabsContent value="account">
                 <textarea
-                  className="w-full p-4 rounded-lg border focus:outline-none text-lg text-black placeholder-gray-500"
+                  className="w-full p-4 rounded-lg border focus:outline-none bg-transparent backdrop-blur-sm text-lg text-black placeholder-gray-500"
                   rows={5}
                   placeholder="Enter news article headline..."
                   value={url}
@@ -276,7 +282,7 @@ const Hero: React.FC = () => {
               <TabsContent value="password">
                 <div
                   {...getRootProps()}
-                  className="w-full h-[180px] p-8 border-2 border-dashed rounded-lg flex justify-center items-center text-center cursor-pointer overflow-hidden"
+                  className="w-full h-[180px] backdrop-blur-sm  p-8 border-2 border-dashed rounded-lg flex justify-center items-center text-center cursor-pointer overflow-hidden"
                 >
                   <input {...getInputProps()} />
                   {imagePreview ? (
@@ -316,27 +322,44 @@ const Hero: React.FC = () => {
             <img src="/research.gif" alt="Loading..." className="w-24 h-24" />
           </div>
         ) : (
-          <div ref={resultRef} className="w-full h-screen flex bg-gray-100 p-8 gap-6">
+          <div
+            ref={resultRef}
+            className="w-full h-screen flex bg-gray-100 p-8 gap-6 flex-col md:flex-row"
+          >
             {/* Left Section - Trusted Sources */}
-            <div className="w-1/2 h-full bg-white shadow-xl rounded-lg p-6 overflow-auto">
+            <div className="w-1/2 h-full bg-white shadow-xl rounded-lg p-6 duration-500 transform hover:scale-[1.01]">
               <h2 className="text-black text-2xl font-bold mb-4">
                 Verified Sources
               </h2>
 
-              {/* Trusted Sources List */}
-              <div className="bg-gray-100 p-4 rounded-lg shadow-md">
-                <ul className="space-y-4">
-                  {finalData.claims.filter((_, index) => index < 3).map((claim, index) => (
-                    <div className="bg-white shadow-md rounded-lg hover:bg-gray-200 p-4  transition">
-                      <li className="">
-                        {claim.text}
-                      </li>
+              {finalData.claims.length > 0 ? (
+                <div className="bg-gray-100 p-4 rounded-lg shadow-md">
+                  <ul className="space-y-4">
+                    {finalData.claims
+                      .filter((_, index) => index < 3)
+                      .map((claim, index) => (
+                        <div className="bg-white shadow-md rounded-lg hover:bg-gray-200 p-4  transition">
+                          <li className="">{claim.text}</li>
 
-                      <a href={claim.url} className="text-blue-500 flex items-center gap-1"> <span><FiLink /></span>Source</a>
-                    </div>
-                  ))}
-                </ul>
-              </div>
+                          <a
+                            href={claim.url}
+                            className="text-blue-500 flex items-center gap-1"
+                          >
+                            {" "}
+                            <span>
+                              <FiLink />
+                            </span>
+                            Source
+                          </a>
+                        </div>
+                      ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="bg-gray-100 p-4 rounded-lg shadow-md min-w-[200px] min-h-[300px] flex-center">
+                  No Sources Available at the moment
+                </div>
+              )}
 
               {/* Sentiment Analysis Outcome */}
               <div className="mt-6 bg-gray-200 p-6 rounded-lg shadow-md">
@@ -351,35 +374,36 @@ const Hero: React.FC = () => {
             <div className="w-1/2  h-full flex flex-col gap-4">
               {/* Top Right Section */}
               <div
-                className={`w-full h-1/2 p-6 rounded-lg shadow-lg transition duration-500 transform hover:scale-105 backdrop-blur-lg ${
+                className={`w-full max-w-2xl mx-auto p-6 rounded-lg shadow-lg transition duration-300 transform hover:scale-[1.02] backdrop-blur-lg ${
                   finalData.finalProbability >= 50
-                    ? "bg-green-300/40"
-                    : "bg-red-300/40"
+                    ? "bg-green-100 border-l-8 border-green-500"
+                    : "bg-red-100 border-l-8 border-red-500"
                 }`}
               >
-                <h2 className="text-2xl font-bold text-black text-center mb-4">
-                  Verification of the News
+                <h2 className="text-2xl font-semibold text-center text-gray-900 mb-4">
+                  News Verification Result
                 </h2>
-                <p className="text-gray-800 text-lg text-center max-w-xl mx-auto">
+
+                <p className="text-gray-700 text-lg text-center max-w-xl mx-auto">
                   {finalData.thought}
                 </p>
 
                 {/* Verification Result */}
                 <div
-                  className={`mt-6 text-center text-white font-bold text-xl py-4 rounded-lg transition-all ${
+                  className={`mt-6 text-center font-bold text-3xl py-5 rounded-lg ${
                     finalData.finalProbability >= 50
-                      ? "bg-green-600"
-                      : "bg-red-600"
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
                   }`}
                 >
                   {finalData.finalProbability >= 50
-                    ? "✅ Verified as Real News"
-                    : "❌ Identified as Fake News"}
+                    ? "✅ Real News"
+                    : "❌ Fake News"}
                 </div>
               </div>
 
               {/* Bottom Right Section */}
-              <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-lg transition duration-500 hover:scale-105 backdrop-blur-lg">
+              <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-lg transition duration-500 hover:scale-[1.01] backdrop-blur-lg">
                 {/* Progress Bar */}
                 <div className="w-3/4">
                   <CircularProgressBar
