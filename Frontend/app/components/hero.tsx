@@ -15,6 +15,7 @@ import CircularProgressBar from "./progress";
 import ReactMarkdown from "react-markdown";
 import ansiRegex from "ansi-regex";
 import stripAnsi from "strip-ansi";
+import { FiLink } from "react-icons/fi";
 
 export function parseApiResponse(raw: string) {
   // Remove ANSI escape sequences
@@ -32,13 +33,23 @@ export function parseApiResponse(raw: string) {
   const thought = matchSection(/Your thoughts:\s*(.*?)\s*(?:Claims|$)/s);
 
   // 2. Extract Claims as an array of strings
-  const claims: string[] = [];
-  const claimMatches = [
-    ...cleaned.matchAll(
-      /\d+\s*Claim\s*\d+\s*-\s*(.*?)\s*(?=\d+\s*Claim|\n\n|Sentiment)/gs
-    ),
-  ];
+  const claims: { text: string; url: string }[] = [];
+  const claimMatches = [...cleaned.matchAll(/\d+\s*Claim\s*\d+\s*-\s*(.*?)\s*(https?:\/\/[^\s]+)/gs)];
 
+  for (const match of claimMatches) {
+    let text = match[1].replace(/\x1B\]8;id=\d+;/g, '').trim(); // Remove the "id=..." part
+    let url = match[2].split('')[0].trim(); // Extract the clean URL before escape sequences
+
+    claims.push({ text, url });
+  }
+
+
+  for (const match of claimMatches) {
+    claims.push({
+      text: match[1].trim(),
+      url: match[2].trim(),
+    });
+  }
   for (const match of claimMatches) {
     claims.push(match[1].trim());
   }
@@ -97,9 +108,13 @@ const cleanText = (input: string) => {
   return input.replace(/\x1B\[[0-9;]*[mK]/g, "");
 };
 
+type claimType = {
+  text: string;
+  url: string;
+};
 type FinalDataType = {
   thought: string;
-  claims: string[];
+  claims: claimType[];
   sentiment: string;
   finalProbability: number;
 };
@@ -140,7 +155,26 @@ const Hero: React.FC = () => {
     multiple: false, // Allow only one file at a time
   });
 
+  console.log("selected file", selectedFile);
+
   const handleFactCheck = async () => {
+    const formData = new FormData();
+    if(selectedFile){
+      formData.append("file", selectedFile); // `file` is the selected File object
+
+      fetch("http://127.0.0.1:5000/fact_check", {
+        method: "POST",
+        body: formData,
+      })
+        .then(response => response.json())
+        .then(data => console.log("Upload success:", data))
+        .catch(error => console.error("Upload failed:", error));
+
+        setSelectedFile(null);
+        return;
+    }
+
+
     if (!url) {
       setError("Please enter a URL");
       return;
@@ -150,8 +184,7 @@ const Hero: React.FC = () => {
     setError(null);
     setResult(null);
 
-    const formData = new FormData();
-    formData.append("text", url); // Assuming 'url' is your input text
+    formData.append("text", url); 
 
     try {
       const response = await fetch("http://127.0.0.1:5000/fact_check", {
@@ -283,7 +316,7 @@ const Hero: React.FC = () => {
             <img src="/research.gif" alt="Loading..." className="w-24 h-24" />
           </div>
         ) : (
-          <div ref={resultRef} className="w-full h-screen flex bg-gray-100 p-8">
+          <div ref={resultRef} className="w-full h-screen flex bg-gray-100 p-8 gap-6">
             {/* Left Section - Trusted Sources */}
             <div className="w-1/2 h-full bg-white shadow-xl rounded-lg p-6 overflow-auto">
               <h2 className="text-black text-2xl font-bold mb-4">
@@ -293,10 +326,14 @@ const Hero: React.FC = () => {
               {/* Trusted Sources List */}
               <div className="bg-gray-100 p-4 rounded-lg shadow-md">
                 <ul className="space-y-4">
-                  {finalData.claims.map((claim, index) => (
-                     <li className="p-4 bg-white shadow-md rounded-lg hover:bg-gray-200 transition">
-                     {claim}
-                   </li>
+                  {finalData.claims.filter((_, index) => index < 3).map((claim, index) => (
+                    <div className="bg-white shadow-md rounded-lg hover:bg-gray-200 p-4  transition">
+                      <li className="">
+                        {claim.text}
+                      </li>
+
+                      <a href={claim.url} className="text-blue-500 flex items-center gap-1"> <span><FiLink /></span>Source</a>
+                    </div>
                   ))}
                 </ul>
               </div>
@@ -306,31 +343,33 @@ const Hero: React.FC = () => {
                 <h3 className="text-xl font-semibold mb-2">
                   Sentiment Analysis Outcome
                 </h3>
-                <p className="text-gray-700">
-                {finalData.sentiment}
-                </p>
+                <p className="text-gray-700">{finalData.sentiment}</p>
               </div>
             </div>
 
             {/* Right Section - News Verification Result */}
-            <div className="w-1/2 bg-white h-full flex flex-col shadow-lg rounded-lg overflow-hidden">
+            <div className="w-1/2  h-full flex flex-col gap-4">
               {/* Top Right Section */}
               <div
                 className={`w-full h-1/2 p-6 rounded-lg shadow-lg transition duration-500 transform hover:scale-105 backdrop-blur-lg ${
-                  finalData.finalProbability >= 50 ? "bg-green-300/40" : "bg-red-300/40"
+                  finalData.finalProbability >= 50
+                    ? "bg-green-300/40"
+                    : "bg-red-300/40"
                 }`}
               >
                 <h2 className="text-2xl font-bold text-black text-center mb-4">
-                  Verification of Osama bin Laden's Death
+                  Verification of the News
                 </h2>
                 <p className="text-gray-800 text-lg text-center max-w-xl mx-auto">
-                {finalData.thought}
+                  {finalData.thought}
                 </p>
 
                 {/* Verification Result */}
                 <div
                   className={`mt-6 text-center text-white font-bold text-xl py-4 rounded-lg transition-all ${
-                    finalData.finalProbability >= 50 ? "bg-green-600" : "bg-red-600"
+                    finalData.finalProbability >= 50
+                      ? "bg-green-600"
+                      : "bg-red-600"
                   }`}
                 >
                   {finalData.finalProbability >= 50
@@ -343,7 +382,9 @@ const Hero: React.FC = () => {
               <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-lg transition duration-500 hover:scale-105 backdrop-blur-lg">
                 {/* Progress Bar */}
                 <div className="w-3/4">
-                  <CircularProgressBar efficiency={finalData.finalProbability} />
+                  <CircularProgressBar
+                    efficiency={finalData.finalProbability}
+                  />
                 </div>
 
                 {/* Probability Text */}
@@ -354,7 +395,9 @@ const Hero: React.FC = () => {
                     {" "}
                     real{" "}
                   </span> is:{" "}
-                  <span className="text-green-700 font-bold">{finalData.finalProbability}%</span>
+                  <span className="text-green-700 font-bold">
+                    {finalData.finalProbability}%
+                  </span>
                 </p>
               </div>
             </div>
