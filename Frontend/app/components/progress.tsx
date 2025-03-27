@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 
-export const CircularProgressBar = ({ efficiency = 75 }) => {
+export const CircularProgressBar = ({ efficiency }: {efficiency: number}) => {
   const [progress, setProgress] = useState(0);
   const controls = useAnimation();
 

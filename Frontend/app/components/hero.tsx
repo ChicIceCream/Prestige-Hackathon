@@ -9,19 +9,55 @@ import { FaRegImage } from "react-icons/fa6";
 import * as THREE from "three";
 import GLOBE from "vanta/dist/vanta.globe.min";
 import { motion } from "framer-motion";
-import { div } from "framer-motion/client";
+import { div, li } from "framer-motion/client";
 import { LeftSection } from "./leftSection";
 import CircularProgressBar from "./progress";
 import ReactMarkdown from "react-markdown";
 import ansiRegex from "ansi-regex";
+import stripAnsi from "strip-ansi";
 
-interface ClaimReview {
-  publisher: {
-    name: string;
-    site: string;
-  };
-  textualRating: string;
-  url: string;
+export function parseApiResponse(raw: string) {
+  // Remove ANSI escape sequences
+  const withoutAnsi = raw.replace(/\x1B\[[0-9;]*[mK]/g, "");
+  // Remove box-drawing characters (Unicode range U+2500 to U+257F)
+  const cleaned = withoutAnsi.replace(/[\u2500-\u257F]/g, "").trim();
+
+  // Helper function to match sections
+  function matchSection(pattern: RegExp): string {
+    const match = cleaned.match(pattern);
+    return match ? match[1].trim() : "";
+  }
+
+  // 1. Extract "Your thoughts:" section
+  const thought = matchSection(/Your thoughts:\s*(.*?)\s*(?:Claims|$)/s);
+
+  // 2. Extract Claims as an array of strings
+  const claims: string[] = [];
+  const claimMatches = [
+    ...cleaned.matchAll(
+      /\d+\s*Claim\s*\d+\s*-\s*(.*?)\s*(?=\d+\s*Claim|\n\n|Sentiment)/gs
+    ),
+  ];
+
+  for (const match of claimMatches) {
+    claims.push(match[1].trim());
+  }
+
+  // 3. Extract Sentiment Analysis Outcome
+  const sentiment = matchSection(
+    /Sentiment Analysis\s*:(.*?)\s*(?:Final Probability|$)/s
+  );
+
+  // 4. Extract Final Probability (number)
+  let finalProbability = 0;
+  const finalProbMatch = cleaned.match(
+    /Final Probability of the news being Real\s*[:\-]?\s*(\d+)%/i
+  );
+  if (finalProbMatch) {
+    finalProbability = parseInt(finalProbMatch[1], 10);
+  }
+
+  return { thought, claims, sentiment, finalProbability };
 }
 
 const GlobeBackground = () => {
@@ -57,9 +93,16 @@ const GlobeBackground = () => {
   return <div ref={bgRef} className="absolute inset-0 w-full h-full z-[-1]" />;
 };
 
-export function cleanAnsi(text: string) {
-    return text.replace(ansiRegex(), "");
-  }
+const cleanText = (input: string) => {
+  return input.replace(/\x1B\[[0-9;]*[mK]/g, "");
+};
+
+type FinalDataType = {
+  thought: string;
+  claims: string[];
+  sentiment: string;
+  finalProbability: number;
+};
 
 const Hero: React.FC = () => {
   const [url, setUrl] = useState("");
@@ -72,7 +115,12 @@ const Hero: React.FC = () => {
   const resultRef = useRef(null);
   const [efficiency, setEfficiency] = useState<number>(0);
   const [cleanedResult, setCleanedResult] = useState("");
-
+  const [finalData, setFinalData] = useState<FinalDataType>({
+    thought: "",
+    claims: [],
+    sentiment: "",
+    finalProbability: 0,
+  });
 
   // Dropzone logic
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -102,29 +150,27 @@ const Hero: React.FC = () => {
     setError(null);
     setResult(null);
 
+    const formData = new FormData();
+    formData.append("text", url); // Assuming 'url' is your input text
+
     try {
       const response = await fetch("http://127.0.0.1:5000/fact_check", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: formData, // Send as FormData
       });
 
-      const data = await response.json();
+      const text = await response.json(); // Get plain text response
 
-      if (!response.ok || !data.result) {
-        setError(data.error || "Something went wrong");
+      if (!response.ok) {
+        setError(text || "Something went wrong"); // Handle error
       } else {
-        setResult(data.result);
+        setResult(text.result);
         setTimeout(() => setLoading(false), 1000);
-
-        // Expand the page height
       }
     } catch (err) {
       setError("Failed to fetch data. Please try again.");
     }
   };
-
-  console.log("reulst", result);
 
   useEffect(() => {
     if (expanded) {
@@ -138,9 +184,13 @@ const Hero: React.FC = () => {
 
   useEffect(() => {
     if (result) {
-      setCleanedResult(cleanAnsi(result)); // Remove ANSI codes
+      setCleanedResult(cleanText(result));
+      setFinalData(parseApiResponse(result));
     }
   }, [result]);
+
+  console.log("final data", finalData);
+  // console.log('after cleaning', cleanedResult)
 
   return (
     <div
@@ -233,38 +283,79 @@ const Hero: React.FC = () => {
             <img src="/research.gif" alt="Loading..." className="w-24 h-24" />
           </div>
         ) : (
-          <div ref={resultRef} className="w-full h-screen flex">
+          <div ref={resultRef} className="w-full h-screen flex bg-gray-100 p-8">
             {/* Left Section - Trusted Sources */}
-            <div>
-            {cleanedResult && <ReactMarkdown>{cleanedResult}</ReactMarkdown>}
+            <div className="w-1/2 h-full bg-white shadow-xl rounded-lg p-6 overflow-auto">
+              <h2 className="text-black text-2xl font-bold mb-4">
+                Verified Sources
+              </h2>
+
+              {/* Trusted Sources List */}
+              <div className="bg-gray-100 p-4 rounded-lg shadow-md">
+                <ul className="space-y-4">
+                  {finalData.claims.map((claim, index) => (
+                     <li className="p-4 bg-white shadow-md rounded-lg hover:bg-gray-200 transition">
+                     {claim}
+                   </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Sentiment Analysis Outcome */}
+              <div className="mt-6 bg-gray-200 p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-2">
+                  Sentiment Analysis Outcome
+                </h3>
+                <p className="text-gray-700">
+                {finalData.sentiment}
+                </p>
+              </div>
             </div>
 
             {/* Right Section - News Verification Result */}
-            <div className="w-1/2 bg-white h-full flex flex-col">
+            <div className="w-1/2 bg-white h-full flex flex-col shadow-lg rounded-lg overflow-hidden">
+              {/* Top Right Section */}
               <div
-                className={`w-full h-1/2 flex-col p-16 justify-center items-center transition-all duration-500`}
+                className={`w-full h-1/2 p-6 rounded-lg shadow-lg transition duration-500 transform hover:scale-105 backdrop-blur-lg ${
+                  finalData.finalProbability >= 50 ? "bg-green-300/40" : "bg-red-300/40"
+                }`}
               >
-                <h1 className="text-white text-4xl font-bold mb-4">
-                  {efficiency >= 50
+                <h2 className="text-2xl font-bold text-black text-center mb-4">
+                  Verification of Osama bin Laden's Death
+                </h2>
+                <p className="text-gray-800 text-lg text-center max-w-xl mx-auto">
+                {finalData.thought}
+                </p>
+
+                {/* Verification Result */}
+                <div
+                  className={`mt-6 text-center text-white font-bold text-xl py-4 rounded-lg transition-all ${
+                    finalData.finalProbability >= 50 ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {finalData.finalProbability >= 50
                     ? "✅ Verified as Real News"
                     : "❌ Identified as Fake News"}
-                </h1>
-                <p className="text-white text-lg text-center max-w-lg">
-                  Our advanced AI analysis has determined that this news has an
-                  efficiency score of <strong>{efficiency}%</strong>. This means
-                  we have analyzed multiple data points and detected that the
-                  news is{" "}
-                  {efficiency >= 50
-                    ? "likely to be authentic."
-                    : "highly suspicious and possibly false."}
-                  Our system continuously improves its accuracy by evaluating
-                  credibility factors from various trusted sources.
-                </p>
+                </div>
               </div>
 
               {/* Bottom Right Section */}
-              <div className="w-full h-1/2 bg-white flex justify-center items-center">
-                <CircularProgressBar />
+              <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-lg transition duration-500 hover:scale-105 backdrop-blur-lg">
+                {/* Progress Bar */}
+                <div className="w-3/4">
+                  <CircularProgressBar efficiency={finalData.finalProbability} />
+                </div>
+
+                {/* Probability Text */}
+                <p className="mt-4 text-xl font-semibold text-black text-center">
+                  Based on the evidence from reputable sources and the lack of
+                  emotional bias, the final probability of the news being
+                  <span className="font-bold text-green-600">
+                    {" "}
+                    real{" "}
+                  </span> is:{" "}
+                  <span className="text-green-700 font-bold">{finalData.finalProbability}%</span>
+                </p>
               </div>
             </div>
           </div>

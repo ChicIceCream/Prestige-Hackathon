@@ -179,14 +179,26 @@ fact_check_agent = Agent(
     model=Groq(id="llama-3.3-70b-versatile"),
     tools=[fact_check_toolkit],
     instructions=["""
-        Use the FactCheckTool to verify article claims and return similarity results.
-        Perform sentiment analysis to detect emotional bias.
-        Your response should include:
-        - **Your thoughts on whether the sources relate to the article.**
-        - **Evidence sources and similarity results.**
-        - **Sentiment analysis outcome.**
-        - **Final probability of the news being real (percentage).**
-    """],
+                Use the FactCheckTool to verify article claims and return similarity results.
+                You should not use any previous information that you have. You are a blank model.
+                Only when you look for sources and find information, that is what you will be 
+                relating to. Your opinion does not matter in this manner. Thanks!
+                This should be your format to return an answer:
+                Your thoughts: (This is where you talk about whether the sources actually relate to prompt news.)
+                DO NOT write too much. Write something very short and concise.
+                List your claims like this:
+                1. Claim 1 - your text and then link
+                2. Claim 2 - your text and then link
+                3. Claim 3 - your text and then link
+                ----------------------------------------------------------
+                Claims :(This is where you will tell your sources and how they affected
+                your output with the similarity results between them and the prompt. This place should also include all the links as well next to the sources.)
+                -----------------------------------------------------------
+                Sentiment Analysis: Give the outcome of sentiment analysis.
+                ------------------------------------------------------------
+                Final Probability of the news being Real:
+                Return final number based on similarity result. DO NOT show anything else in this section. Your output should only be a number with a percentage sign.
+                """],
     show_tool_calls=True,
     markdown=True,
 )
