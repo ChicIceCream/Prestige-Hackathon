@@ -1,25 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import nlp from "compromise";
-import { div, filter } from "framer-motion/client";
-import { DotBackgroundDemo } from "./components/dotbackground";
 import Hero from "./components/hero";
-
-interface ClaimReview {
-  publisher: {
-    name: string;
-    site: string;
-  };
-  textualRating: string;
-  url: string;
-}
-
-interface Claim {
-  text: string;
-  claimant?: string;
-  claimReview: ClaimReview[];
-}
 
 interface FactCheckResponse {
   claims: {
@@ -181,7 +163,7 @@ const VeriFactAI: React.FC = () => {
   }
 
   return (
-    <div className="">
+    <div>
         <Hero />
     </div>
   );

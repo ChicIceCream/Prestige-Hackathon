@@ -233,7 +233,7 @@ const Hero: React.FC = () => {
 
   return (
     <div
-      className={`transition-all duration-500 ${
+      className={`transition-all duration-500 source-code-pro-quicksand ${
         expanded ? "min-h-[200vh]" : "min-h-screen"
       }`}
     >
@@ -324,10 +324,10 @@ const Hero: React.FC = () => {
         ) : (
           <div
             ref={resultRef}
-            className="w-full h-screen flex bg-gray-100 p-8 gap-6 flex-col md:flex-row"
+            className="w-full h-full min-h-screen flex justify-center bg-gray-100 p-8 gap-6  flex-col md:flex-row"
           >
             {/* Left Section - Trusted Sources */}
-            <div className="w-1/2 h-full bg-white shadow-xl rounded-lg p-6 duration-500 transform hover:scale-[1.01]">
+            <div className="w-1/2 min-h-full bg-white shadow-xl rounded-lg p-6 duration-500  transform hover:scale-[1.01]">
               <h2 className="text-black text-2xl font-bold mb-4">
                 Verified Sources
               </h2>
@@ -371,10 +371,10 @@ const Hero: React.FC = () => {
             </div>
 
             {/* Right Section - News Verification Result */}
-            <div className="w-1/2  h-full flex flex-col gap-4">
+            <div className="w-1/2 min-h-full flex flex-col gap-4 ">
               {/* Top Right Section */}
               <div
-                className={`w-full max-w-2xl mx-auto p-6 rounded-lg shadow-lg transition duration-300 transform hover:scale-[1.02] backdrop-blur-lg ${
+                className={`w-full h-1/2  mx-auto p-4 rounded-lg flex-center flex-col shadow-xl transition duration-300 transform hover:scale-[1.02] backdrop-blur-lg ${
                   finalData.finalProbability >= 50
                     ? "bg-green-100 border-l-8 border-green-500"
                     : "bg-red-100 border-l-8 border-red-500"
@@ -390,10 +390,10 @@ const Hero: React.FC = () => {
 
                 {/* Verification Result */}
                 <div
-                  className={`mt-6 text-center font-bold text-3xl py-5 rounded-lg ${
+                  className={`flex-center w-[400px] mt-6 text-center font-bold text-2xl py-3 rounded-lg ${
                     finalData.finalProbability >= 50
                       ? "bg-green-600 text-white"
-                      : "bg-red-600 text-white"
+                      : "bg-red-500 text-white"
                   }`}
                 >
                   {finalData.finalProbability >= 50
@@ -403,7 +403,7 @@ const Hero: React.FC = () => {
               </div>
 
               {/* Bottom Right Section */}
-              <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-lg transition duration-500 hover:scale-[1.01] backdrop-blur-lg">
+              <div className="w-full h-1/2 bg-white flex flex-col justify-center items-center p-6 rounded-lg shadow-xl transition duration-500 hover:scale-[1.01] backdrop-blur-lg">
                 {/* Progress Bar */}
                 <div className="w-3/4">
                   <CircularProgressBar
@@ -412,7 +412,7 @@ const Hero: React.FC = () => {
                 </div>
 
                 {/* Probability Text */}
-                <p className="mt-4 text-xl font-semibold text-black text-center">
+                <p className="mt-4 text-lg text-gray-700 text-center">
                   Based on the evidence from reputable sources and the lack of
                   emotional bias, the final probability of the news being
                   <span className="font-bold text-green-600">
@@ -427,8 +427,20 @@ const Hero: React.FC = () => {
             </div>
           </div>
         ))}
+ {!loading && (
+  <div className="text-wrapper text-3xl text-black mb-4 opacity-60 uppercase h-16 flex items-end justify-end">
+    {Array(8).fill("Half Baked Coders ✦").map((text, i) => (
+      <span key={i} className="animated-text mr-2 tracking-wide">{text}</span>
+    ))}
+  </div>
+)}
+
+
+
     </div>
   );
 };
 
 export default Hero;
+
+
