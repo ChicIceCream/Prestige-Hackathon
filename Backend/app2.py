@@ -2,8 +2,13 @@ from flask import Flask, request, jsonify
 from aiagent_phi import fact_check_agent
 from gemini_ocr import perform_ocr_and_summarize
 import tempfile
+from flask_cors import CORS
+from io import StringIO
+import sys
+
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/fact_check", methods=["POST"])
 def fact_check():
@@ -23,11 +28,20 @@ def fact_check():
 
         if not text:
             return jsonify({"error": "OCR failed to extract text"}), 500
+        # Capture the output of print_response
+        output_buffer = StringIO()
+        sys.stdout = output_buffer  # Redirect stdout to capture print output
 
-        # Send extracted/summarized text to AI agent for fact-checking
-        result = fact_check_agent.print_response(text, stream=False)
+        fact_check_agent.print_response(text, stream=True)
 
-        return jsonify({"result": result.strip()})
+        sys.stdout = sys.__stdout__  # Reset stdout to normal
+        response = output_buffer.getvalue()  # Get the captured output
+
+        # print("\n--- Final Response ---")
+        # print(response)  # This prints the stored response
+
+
+        return jsonify({"result": response.strip()})
 
     except Exception as e:
         return jsonify({"error": f"Fact check failed: {str(e)}"}), 500
