@@ -1,50 +1,52 @@
-from flask import Flask, request, jsonify, render_template
-from sentence_transformers import SentenceTransformer
-from scipy.spatial.distance import cosine
+from flask import Flask, render_template, request, jsonify
+from aiagent_phi import fact_check_agent
+from io import StringIO
+import sys
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__)  # Define Flask app first
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
-CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all domains
-# Load the sentence transformer model
-model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def get_similarity(text1, text2):
-    """Compute the similarity score between two texts using BERT embeddings."""
-    embedding1 = model.encode(text1, convert_to_numpy=True)
-    embedding2 = model.encode(text2, convert_to_numpy=True)
-    similarity = 1 - cosine(embedding1, embedding2)  # Cosine similarity
-    return similarity
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("form.html")
 
-@app.route("/")
-def home():
-    """Serve the HTML page for the similarity checker."""
-    return render_template("index.html")
+@app.route("/fact_check", methods=["POST", "OPTIONS"])
+def fact_check():
+    if request.method == "OPTIONS":  # Handle preflight requests
+        return _cors_preflight_response()
 
-@app.route("/similarity", methods=["POST"])
-def similarity_api():
-    """API endpoint to compute similarity between two texts."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
     try:
-        data = request.get_json()
+        output = StringIO()
+        sys.stdout = output
+        fact_check_agent.print_response(url, stream=True)
+        response = output.getvalue()
+        sys.stdout = sys.__stdout__
+
+        if not response:
+            return jsonify({"error": "Empty response from fact check agent"}), 500
+            
+        return jsonify({"result": response.strip()})
         
-        if not data:
-            return jsonify({"error": "Invalid JSON"}), 400
-
-        text1 = data.get("text1", "").strip()
-        text2 = data.get("text2", "").strip()
-
-        if not text1 or not text2:
-            return jsonify({"error": "Both text1 and text2 are required."}), 400
-
-        similarity_score = get_similarity(text1, text2)
-
-        return jsonify({"similarity_score": float(similarity_score)})  # ✅ Convert float32 to float
-
     except Exception as e:
-        print("Error:", str(e))
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Fact check failed: {str(e)}"}), 500
 
+def _cors_preflight_response():
+    response = jsonify({"message": "CORS preflight passed"})
+    response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
-
+    app.run(debug=True)

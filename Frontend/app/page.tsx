@@ -183,7 +183,6 @@ const VeriFactAI: React.FC = () => {
   return (
     <div className="">
         <Hero />
-        
     </div>
   );
 };
